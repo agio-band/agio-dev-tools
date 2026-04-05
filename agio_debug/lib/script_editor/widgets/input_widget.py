@@ -21,6 +21,7 @@ class InputWidget(QTextEdit):
     execute_signal = Signal()
     save_signal = Signal()
     input_signal = Signal()
+    font_changed = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -57,6 +58,7 @@ class InputWidget(QTextEdit):
         self.document().setDefaultFont(font)
         font_metrics = QFontMetrics(font)
         self.setTabStopDistance(INDENT_LEN * font_metrics.horizontalAdvance(' '))
+        self.font_changed.emit()
 
     def get_current_indent(self) -> str:
         cursor = self.textCursor()
