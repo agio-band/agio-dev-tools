@@ -59,9 +59,7 @@ class CompletionEngine:
 
             return result
         except Exception as e:
-            print(f"[CompletionEngine] ERROR: {e}")
-            import traceback
-            traceback.print_exc()
+            print(e)
             return []
 
     def should_trigger_completion(self, text: str, cursor_pos: int) -> bool:

@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QSplitter
+    QMainWindow, QVBoxLayout, QWidget, QSplitter
 )
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtCore import Qt
@@ -10,7 +10,7 @@ from .widgets.output_widget import OutputWidget
 from .widgets.tab_widget import TabWidget
 
 
-class ScriptEditorDialog(QDialog):
+class ScriptEditorDialog(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("agio Python Script Editor")
@@ -23,6 +23,8 @@ class ScriptEditorDialog(QDialog):
         self.executor.stderr_signal.connect(self.output_widget.append_error)
 
     def _setup_ui(self):
+        central = QWidget()
+        self.setCentralWidget(central)
         main_layout = QVBoxLayout()
         main_layout.setSpacing(5)
         main_layout.setContentsMargins(5, 5, 5, 5)
@@ -37,9 +39,9 @@ class ScriptEditorDialog(QDialog):
         splitter.setSizes([210, 490])
 
         main_layout.addWidget(splitter)
-        self.setLayout(main_layout)
+        central.setLayout(main_layout)
 
-        # self.tab_widget.add_new_tab("Script 1")
+        self.add_tab('Script 1')
 
     def _setup_shortcuts(self):
         ctrl_n = QShortcut(QKeySequence("Ctrl+N"), self)

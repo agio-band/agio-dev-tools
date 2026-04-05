@@ -27,7 +27,6 @@ class TabContainer(QWidget):
         self.completer.editor = self.edit
         self.completer.setParent(self.edit)
         self.completion_thread.completions_ready.connect(self.edit.on_completions_ready)
-        self.completion_thread.start()
         if text:
             self.edit.append_text(text)
         self.line_num = LineNumberWidget(self.edit, self)
