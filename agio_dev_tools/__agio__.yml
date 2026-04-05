@@ -1,0 +1,32 @@
+name: agio_dev_tools
+version: 0.0.0
+label: agio Dev Tools
+description: |
+  agio Developer Tools and Utils
+icon: ""
+
+tags:
+
+urls:
+  source_url: ""
+  home_page: ""
+  documentation: ""
+  bug_tracker: ""
+
+required_packages: []
+
+#plugins:
+#  - label: Plugin Name
+#    implementations:
+#      - module: plugins/commands/my_plugin.py
+
+#settings:
+#  local:
+#    layout: package_settings/local_layout.yml
+#    model: package_settings.local_settings.PluginLocalSettings
+#  workspace:
+#    layout: package_settings/workspace_layout.yml
+#    model: package_settings.workspace_settings.PluginWorkspaceSettings
+
+callbacks:
+  - callbacks/print_publish_context.py
