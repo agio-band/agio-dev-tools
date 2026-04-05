@@ -56,7 +56,7 @@ class ScriptEditorDialog(QDialog):
         splitter.setSizes([210, 490])
 
         # Show ready message
-        self.output_widget.append_output("Python Script Editor Ready. Press Ctrl+Enter to execute code.")
+        # self.output_widget.append_output("Python Script Editor Ready. Press Ctrl+Enter to execute code.")
 
         main_layout.addWidget(splitter)
         self.setLayout(main_layout)

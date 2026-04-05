@@ -283,7 +283,6 @@ class InputWidget(QTextEdit):
         if not self.completer:
             return
         cursor_rect = self.cursorRect()
-        # Position is relative to editor (parent)
         pos = QPoint(cursor_rect.left(), cursor_rect.bottom() + 2)
         self.completer.show_at(pos)
 
@@ -291,36 +290,33 @@ class InputWidget(QTextEdit):
         cursor = self.textCursor()
         pos = cursor.position()
 
-        # Manually find the start of the partial word (stop at dot, space, or start of line)
-        # Scan backwards character by character
-        scan_pos = pos
-        text = self.toPlainText()
-        while scan_pos > 0:
-            ch = text[scan_pos - 1]
-            if ch in (' ', '.', '\t', '\n'):
-                word_start = scan_pos  # Start after separator
+        # Get text of the current block (line)
+        block = cursor.block()
+        line_text = block.text()
+        col = cursor.columnNumber()
+
+        # Find start of word before cursor (scan backwards in this line)
+        start = col
+        while start > 0:
+            ch = line_text[start - 1]
+            if not (ch.isalnum() or ch == '_'):
                 break
-            scan_pos -= 1
-        else:
-            word_start = 0  # Start of document
+            start -= 1
 
-        # Always use the full name for replacement
-        insert_text = completion.name
-        needs_cursor_move_back = False
-
-        # For functions/methods, insert name + brackets with cursor between
-        if hasattr(completion, 'type') and completion.type in ('function', 'method'):
-            insert_text = completion.name + '()'
-            needs_cursor_move_back = True
-
-        # Select from word_start to pos and replace
-        cursor.setPosition(word_start)
+        # Select only the partial word and replace it
+        cursor.setPosition(block.position() + start)
         cursor.setPosition(pos, QTextCursor.KeepAnchor)
         cursor.removeSelectedText()
+
+        # For functions/methods, add parentheses
+        insert_text = completion.name
+        if hasattr(completion, 'type') and completion.type in ('function', 'method'):
+            insert_text = completion.name + '()'
+
         cursor.insertText(insert_text)
 
         # Position cursor inside parentheses for functions
-        if needs_cursor_move_back:
+        if hasattr(completion, 'type') and completion.type in ('function', 'method'):
             cursor.movePosition(QTextCursor.Left)
 
         self.setTextCursor(cursor)
