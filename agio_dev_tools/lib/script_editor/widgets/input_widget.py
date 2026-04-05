@@ -279,6 +279,13 @@ class InputWidget(QTextEdit):
                 self.completion_thread.request_completions(
                     text, line_num, col_num, self._request_id
                 )
+            elif char_before == '.':
+                self._request_id += 1
+                line_num = cursor.blockNumber() + 1
+                col_num = cursor.columnNumber()
+                self.completion_thread.request_completions(
+                    text, line_num, col_num, self._request_id
+                )
             else:
                 self.completer.hide()
 
