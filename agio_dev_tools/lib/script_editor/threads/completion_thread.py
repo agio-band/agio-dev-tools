@@ -46,6 +46,7 @@ class CompletionThread(QThread):
             self._mutex.unlock()
 
             completions = engine.get_completions(text, line, column)
+
             self.completions_ready.emit(completions, req_id)
 
     def stop(self):

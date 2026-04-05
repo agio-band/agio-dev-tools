@@ -19,19 +19,19 @@ class CompletionEngine:
     def get_completions(self, text: str, line: int, column: int) -> list[CompletionItem]:
         """
         Get completions for the given text at the specified position.
-        
+
         Args:
             text: The full source text
-            line: Line number (1-based)
+            line: Line number (1-based from InputWidget)
             column: Column number (0-based)
-            
+
         Returns:
             List of CompletionItem objects
         """
         try:
             script = jedi.Script(text, path=None)
             completions = script.complete(line, column)
-            
+
             result = []
             for comp in completions:
                 item = CompletionItem(
@@ -39,7 +39,7 @@ class CompletionEngine:
                     complete=comp.complete,
                     type=comp.type,
                 )
-                
+
                 if comp.type == 'function':
                     try:
                         sigs = comp.get_signatures()
@@ -47,18 +47,21 @@ class CompletionEngine:
                             item.signature = sigs[0].to_string()
                     except Exception:
                         pass
-                
+
                 try:
                     doc = comp.docstring()
                     if doc:
                         item.docstring = doc
                 except Exception:
                     pass
-                
+
                 result.append(item)
-            
+
             return result
-        except Exception:
+        except Exception as e:
+            print(f"[CompletionEngine] ERROR: {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
     def should_trigger_completion(self, text: str, cursor_pos: int) -> bool:
