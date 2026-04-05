@@ -1,30 +1,50 @@
 """Tab widget for managing multiple code editor tabs."""
 
 from PySide6.QtWidgets import (
-    QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, 
+    QTabWidget, QWidget, QHBoxLayout,
     QPushButton, QInputDialog, QMessageBox, QApplication
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QTextCursor
 
 from .input_widget import InputWidget
 from .line_number_widget import LineNumberWidget
+from .completion_widget import CompletionWidget
+from ..threads.completion_thread import CompletionThread
 
 
 class TabContainer(QWidget):
     """Container widget for a single tab with editor and line numbers."""
 
-    def __init__(self, parent, text="", desk=None):
+    def __init__(self, parent_editor, text="", desk=None):
         super().__init__()
-        self.parent_editor = parent
-        
+        self.parent_editor = parent_editor
+
+        # Create completion thread and widget
+        self.completion_thread = CompletionThread()
+        self.completer = CompletionWidget(editor=None)
+
         # Create horizontal layout
         hbox = QHBoxLayout(self)
         hbox.setSpacing(0)
         hbox.setContentsMargins(0, 0, 0, 0)
-        
+
         # Create input widget
-        self.edit = InputWidget(parent)
+        self.edit = InputWidget(parent_editor)
+
+        # Wire completer to editor
+        self.edit.completer = self.completer
+        self.edit.completion_thread = self.completion_thread
+        self.completer.editor = self.edit
+        # Set editor as parent so completer is positioned relative to it
+        self.completer.setParent(self.edit)
+
+        # Connect completion thread signals
+        self.completion_thread.completions_ready.connect(self.edit.on_completions_ready)
+
+        # Start the completion thread
+        self.completion_thread.start()
+        
         if text:
             self.edit.append_text(text)
         
@@ -38,7 +58,12 @@ class TabContainer(QWidget):
         hbox.addWidget(self.edit)
         
         # Connect execute signal
-        self.edit.execute_signal.connect(parent.execute_selected)
+        self.edit.execute_signal.connect(parent_editor.execute_selected)
+
+    def cleanup(self):
+        """Clean up resources when tab is closed."""
+        if self.completion_thread:
+            self.completion_thread.stop()
 
 
 class TabWidget(QTabWidget):
@@ -67,7 +92,7 @@ class TabWidget(QTabWidget):
         self.desk = QApplication.desktop() if hasattr(QApplication, 'desktop') else None
         
         # Connect signals
-        self.currentChanged.connect(self._hide_all_completers)
+        self.currentChanged.connect(self._on_tab_changed)
 
     def _open_menu(self):
         """Open context menu for tab bar."""
@@ -84,6 +109,8 @@ class TabWidget(QTabWidget):
         """Add a new tab and return the InputWidget."""
         container = TabContainer(self.parent_editor, text, self.desk)
         container.edit.save_signal.connect(self._save_session)
+        
+        # Use widget index since we haven't added it yet
         self.addTab(container, str(name))
         container.edit.moveCursor(QTextCursor.End)
         self.setCurrentIndex(self.count() - 1)
@@ -93,6 +120,9 @@ class TabWidget(QTabWidget):
         """Close tab at given index."""
         if self.count() <= 1:
             return
+        
+        # Get the container to clean up
+        container = self.widget(index)
         
         # Check if tab has unsaved content
         text = self.get_tab_text(index)
@@ -105,6 +135,8 @@ class TabWidget(QTabWidget):
             if reply == QMessageBox.No:
                 return
         
+        # Cleanup resources
+        container.cleanup()
         self.removeTab(index)
 
     def rename_tab(self):
@@ -144,11 +176,13 @@ class TabWidget(QTabWidget):
         if 0 <= index < self.count():
             self.widget(index).edit.insertPlainText(text)
 
-    def _hide_all_completers(self):
-        """Hide all completers in all tabs."""
+    def _on_tab_changed(self, index):
+        """Handle tab change - hide all completers."""
         for i in range(self.count()):
-            if hasattr(self.widget(i).edit, 'completer') and self.widget(i).edit.completer:
-                self.widget(i).edit.completer.hide()
+            widget = self.widget(i)
+            if hasattr(widget, 'edit') and hasattr(widget.edit, 'completer'):
+                if widget.edit.completer:
+                    widget.edit.completer.hide()
 
     def current_editor(self):
         """Get the current InputWidget."""
@@ -157,3 +191,10 @@ class TabWidget(QTabWidget):
     def _save_session(self):
         """Save session signal handler (placeholder)."""
         pass
+
+    def cleanup_all(self):
+        """Clean up all tab resources. Call before closing the dialog."""
+        for i in range(self.count()):
+            container = self.widget(i)
+            if hasattr(container, 'cleanup'):
+                container.cleanup()

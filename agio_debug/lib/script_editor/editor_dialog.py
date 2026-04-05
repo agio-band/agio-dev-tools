@@ -1,8 +1,7 @@
 """Main script editor dialog integrating all components."""
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QSplitter,
-    QLabel
+    QDialog, QVBoxLayout, QSplitter
 )
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtCore import Qt
@@ -11,8 +10,6 @@ from .core.code_manager import CodeManager
 from .core.executor import CodeExecutor
 from .widgets.output_widget import OutputWidget
 from .widgets.tab_widget import TabWidget
-from .widgets.completion_widget import CompletionWidget
-from .threads.completion_thread import CompletionThread
 
 
 class ScriptEditorDialog(QDialog):
@@ -26,20 +23,16 @@ class ScriptEditorDialog(QDialog):
         # Initialize core components
         self.code_manager = CodeManager()
         self.executor = CodeExecutor()
-        
+
         # Create UI
         self._setup_ui()
-        
+
         # Setup keyboard shortcuts
         self._setup_shortcuts()
-        
+
         # Connect executor signals
         self.executor.stdout_signal.connect(self.output_widget.append_output)
         self.executor.stderr_signal.connect(self.output_widget.append_error)
-        
-        # Initialize completion thread
-        self.completion_thread = CompletionThread()
-        self.completion_thread.completions_ready.connect(self._on_completions_ready)
 
     def _setup_ui(self):
         """Setup the user interface."""
@@ -47,7 +40,7 @@ class ScriptEditorDialog(QDialog):
         main_layout = QVBoxLayout()
         main_layout.setSpacing(5)
         main_layout.setContentsMargins(5, 5, 5, 5)
-        
+
         # Create splitter for editor and output
         splitter = QSplitter(Qt.Vertical)
 
@@ -61,19 +54,18 @@ class ScriptEditorDialog(QDialog):
 
         # Set initial splitter sizes (30% output, 70% editor)
         splitter.setSizes([210, 490])
-        
+
         # Show ready message
         self.output_widget.append_output("Python Script Editor Ready. Press Ctrl+Enter to execute code.")
-        
+
         main_layout.addWidget(splitter)
         self.setLayout(main_layout)
-        
+
         # Add initial tab
         self.tab_widget.add_new_tab("Script 1")
 
     def _setup_shortcuts(self):
         """Setup keyboard shortcuts."""
-        # Ctrl+Enter is handled by InputWidget
         # Ctrl+N for new tab
         ctrl_n = QShortcut(QKeySequence("Ctrl+N"), self)
         ctrl_n.activated.connect(self.tab_widget.add_new_tab)
@@ -103,7 +95,7 @@ class ScriptEditorDialog(QDialog):
         if code is None:
             # Get code from current tab
             code = self.get_current_code()
-        
+
         if code and code.strip():
             self.output_widget.append_prompt(code)
             self.executor.execute(code)
@@ -113,11 +105,11 @@ class ScriptEditorDialog(QDialog):
     def add_tab(self, title: str = "Untitled", code: str = "") -> object:
         """
         Add a new tab with optional title and code.
-        
+
         Args:
             title: Tab title
             code: Initial code text
-            
+
         Returns:
             InputWidget for the new tab
         """
@@ -183,14 +175,8 @@ class ScriptEditorDialog(QDialog):
     def get_editor(self, index: int = None):
         """Get InputWidget for tab at index (or current tab if None)."""
         if index is None:
-            return self.tab_widget.current().edit
+            return self.tab_widget.current_editor()
         return self.tab_widget.widget(index).edit
-
-    def _on_completions_ready(self, completions):
-        """Handle completions ready signal from background thread."""
-        # This will be called when completion thread finishes
-        # Update the completer UI with results
-        pass
 
     def showEvent(self, event):
         """Handle show event to ensure UI is properly initialized."""
@@ -198,3 +184,8 @@ class ScriptEditorDialog(QDialog):
         # Focus the first editor
         if self.tab_widget.count() > 0:
             self.tab_widget.current_editor().setFocus()
+
+    def closeEvent(self, event):
+        """Handle close event - cleanup all threads."""
+        self.tab_widget.cleanup_all()
+        super().closeEvent(event)
