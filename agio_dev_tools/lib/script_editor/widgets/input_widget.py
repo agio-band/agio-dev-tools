@@ -1,14 +1,14 @@
-"""Code input editor widget with syntax highlighting and completions."""
-
 import re
-from PySide6.QtWidgets import QTextEdit
+
 from PySide6.QtCore import Qt, Signal, QPoint
-from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QAction
 from PySide6.QtGui import (
     QFont, QTextOption, QFontMetrics, QKeyEvent, QTextCursor
 )
+from PySide6.QtWidgets import QApplication
 from PySide6.QtWidgets import QMenu
-from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QTextEdit
+
 from .syntax.highlighter import PythonHighlighter
 
 INDENT_LEN = 4
@@ -18,8 +18,6 @@ DEFAULT_FONT_NAME = "Courier New"
 
 
 class InputWidget(QTextEdit):
-    """Code input editor with syntax highlighting and auto-completion support."""
-
     execute_signal = Signal()
     save_signal = Signal()
     input_signal = Signal()
@@ -55,7 +53,6 @@ class InputWidget(QTextEdit):
         return self.document().defaultFont().pointSize()
 
     def change_font_size_to(self, size: int):
-        """Set font to an absolute size."""
         font = self.document().defaultFont()
         font.setPointSize(size)
         self.document().setDefaultFont(font)

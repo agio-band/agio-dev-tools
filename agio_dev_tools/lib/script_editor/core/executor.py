@@ -42,8 +42,6 @@ class CodeExecutor(QObject):
         self._namespace = {"__name__": "__main__"}
 
     def execute(self, code: str) -> ExecutionResult:
-        code = code.replace('\u2029', '\n')
-        
         result = ExecutionResult()
         stdout_buffer = io.StringIO()
         stderr_buffer = io.StringIO()

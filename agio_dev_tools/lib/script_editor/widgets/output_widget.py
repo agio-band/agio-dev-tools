@@ -39,8 +39,6 @@ class OutputWidget(QTextBrowser):
         self.setFont(font)
 
     def append_output(self, text: str):
-        text = text.replace('\u2029', '\n')
-        
         self.moveCursor(QTextCursor.End)
         cursor = self.textCursor()
         cursor.insertBlock()
@@ -59,7 +57,6 @@ class OutputWidget(QTextBrowser):
         self.ensureCursorVisible()
 
     def append_prompt(self, text: str):
-        text = text.replace('\u2029', '\n')
         lines = text.split('\n')
         
         self.moveCursor(QTextCursor.MoveOperation.End)
@@ -83,7 +80,6 @@ class OutputWidget(QTextBrowser):
         self.ensureCursorVisible()
 
     def append_error(self, text: str):
-        text = text.replace('\u2029', '\n')
         lines = text.rstrip('\n').split('\n')
         
         self.moveCursor(QTextCursor.MoveOperation.End)
