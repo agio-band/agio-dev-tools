@@ -40,6 +40,8 @@ class InputWidget(QTextEdit):
         self._request_id = 0
 
         self.setAcceptDrops(True)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
 
     def _setup_font(self):
         font = QFont(DEFAULT_FONT_NAME, 12)
@@ -194,6 +196,16 @@ class InputWidget(QTextEdit):
                 event.accept()
                 return
 
+        if modifiers == Qt.ControlModifier and key == Qt.Key_V:
+            self._paste_plain_text()
+            event.accept()
+            return
+
+        if modifiers == Qt.ShiftModifier and key == Qt.Key_Insert:
+            self._paste_plain_text()
+            event.accept()
+            return
+
         if key in (Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown):
             if self.completer and self.completer.isVisible():
                 self.completer.navigate(key)
@@ -333,6 +345,37 @@ class InputWidget(QTextEdit):
             event.accept()
         else:
             super().wheelEvent(event)
+
+    def _paste_plain_text(self):
+        """Paste plain text only, stripping all formatting."""
+        from PySide6.QtWidgets import QApplication
+        text = QApplication.clipboard().text()
+        self.insertPlainText(text)
+
+    def paste(self):
+        self._paste_plain_text()
+
+    def _show_context_menu(self, pos):
+        from PySide6.QtWidgets import QMenu
+        from PySide6.QtGui import QAction
+
+        menu = QMenu(self)
+        copy_action = QAction("Copy", self)
+        copy_action.setShortcut("Ctrl+C")
+        copy_action.triggered.connect(self.copy)
+
+        paste_action = QAction("Paste", self)
+        paste_action.setShortcut("Ctrl+V")
+        paste_action.triggered.connect(self._paste_plain_text)
+
+        select_all_action = QAction("Select All", self)
+        select_all_action.setShortcut("Ctrl+A")
+        select_all_action.triggered.connect(self.selectAll)
+
+        menu.addAction(copy_action)
+        menu.addAction(paste_action)
+        menu.addAction(select_all_action)
+        menu.exec(self.mapToGlobal(pos))
 
     def get_selected_text(self) -> str:
         cursor = self.textCursor()
