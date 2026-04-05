@@ -1,6 +1,6 @@
 [project]
-name = "agio-debug"
-version = "0.0.0"
+name = "agio-dev-tools"
+version = "0.0.1"
 description = "Debug and develop tools for agio framework"
 authors = [
     { name = "paul", email = "paulwinex@gmail.com" }
@@ -23,7 +23,7 @@ classifiers = [
 include-package-data = true
 
 [tool.setuptools.package-data]
-"agio_debug" = [
+"agio_dev_tools" = [
     "__agio__.yml",
     "resources/**",
 ]

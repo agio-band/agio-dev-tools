@@ -3,10 +3,12 @@
 import re
 from PySide6.QtWidgets import QTextEdit
 from PySide6.QtCore import Qt, Signal, QPoint
+from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import (
     QFont, QTextOption, QFontMetrics, QKeyEvent, QTextCursor
 )
-
+from PySide6.QtWidgets import QMenu
+from PySide6.QtGui import QAction
 from .syntax.highlighter import PythonHighlighter
 
 INDENT_LEN = 4
@@ -27,7 +29,7 @@ class InputWidget(QTextEdit):
         super().__init__(parent)
         self.parent_editor = parent
 
-        self.setWordWrapMode(QTextOption.NoWrap)
+        self.setWordWrapMode(QTextOption.WrapMode.NoWrap)
         self._setup_font()
 
         font_metrics = QFontMetrics(self.document().defaultFont())
@@ -40,13 +42,13 @@ class InputWidget(QTextEdit):
         self._request_id = 0
 
         self.setAcceptDrops(True)
-        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
 
     def _setup_font(self):
         font = QFont(DEFAULT_FONT_NAME, 12)
         font.setFixedPitch(True)
-        font.setStyleHint(QFont.Monospace)
+        font.setStyleHint(QFont.StyleHint.Monospace)
         self.document().setDefaultFont(font)
 
     def get_font_size(self) -> int:
@@ -64,8 +66,8 @@ class InputWidget(QTextEdit):
 
     def get_current_indent(self) -> str:
         cursor = self.textCursor()
-        cursor.movePosition(QTextCursor.StartOfLine)
-        cursor.movePosition(QTextCursor.EndOfLine, QTextCursor.KeepAnchor)
+        cursor.movePosition(QTextCursor.MoveOperation.StartOfLine)
+        cursor.movePosition(QTextCursor.MoveOperation.EndOfLine, QTextCursor.MoveMode.KeepAnchor)
         line = cursor.selectedText()
         indent = ''
         if line.strip():
@@ -104,17 +106,17 @@ class InputWidget(QTextEdit):
         new_text = '\n'.join(new_lines)
         cursor.removeSelectedText()
         cursor.insertText(new_text)
-        cursor.setPosition(start, QTextCursor.MoveAnchor)
-        cursor.setPosition(start + len(new_text), QTextCursor.KeepAnchor)
+        cursor.setPosition(start, QTextCursor.MoveMode.MoveAnchor)
+        cursor.setPosition(start + len(new_text), QTextCursor.MoveMode.KeepAnchor)
         self.setTextCursor(cursor)
 
     def _select_full_lines(self, cursor):
         start = cursor.selectionStart()
         end = cursor.selectionEnd()
         cursor.setPosition(start)
-        cursor.movePosition(QTextCursor.StartOfLine)
-        cursor.setPosition(end, QTextCursor.KeepAnchor)
-        cursor.movePosition(QTextCursor.EndOfLine, QTextCursor.KeepAnchor)
+        cursor.movePosition(QTextCursor.MoveOperation.StartOfLine)
+        cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+        cursor.movePosition(QTextCursor.MoveOperation.EndOfLine, QTextCursor.MoveMode.KeepAnchor)
         self.setTextCursor(cursor)
 
     def keyPressEvent(self, event: QKeyEvent):
@@ -122,30 +124,30 @@ class InputWidget(QTextEdit):
         key = event.key()
         modifiers = event.modifiers()
 
-        if key == Qt.Key_Tab:
+        if key == Qt.Key.Key_Tab:
             if self.completer and self.completer.isVisible():
                 current_item = self.completer.currentItem()
                 if current_item:
-                    self.completer._apply_completion(current_item)
+                    self.completer.apply_completion(current_item)
                 event.accept()
                 return
             self.insert_tab()
             event.accept()
             return
 
-        if key == Qt.Key_Backtab:
+        if key == Qt.Key.Key_Backtab:
             if self.completer:
                 self.completer.hide()
             self.insert_backtab()
             return
 
-        if key in (Qt.Key_Return, Qt.Key_Enter):
+        if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             if self.completer and self.completer.isVisible():
-                if modifiers == Qt.NoModifier:
-                    self.completer._apply_completion(self.completer.currentItem())
+                if modifiers == Qt.KeyboardModifier.NoModifier:
+                    self.completer.apply_completion(self.completer.currentItem())
                     event.accept()
                     return
-            if modifiers == Qt.NoModifier:
+            if modifiers == Qt.KeyboardModifier.NoModifier:
                 indent = self.get_current_indent()
                 super().keyPressEvent(event)
                 if indent:
@@ -154,22 +156,22 @@ class InputWidget(QTextEdit):
                     self.setTextCursor(cursor)
                 event.accept()
                 return
-            if modifiers == Qt.ShiftModifier:
+            if modifiers == Qt.KeyboardModifier.ShiftModifier:
                 event.accept()
                 return
 
-        if modifiers == Qt.ControlModifier and key in (Qt.Key_Return, Qt.Key_Enter):
+        if modifiers == Qt.KeyboardModifier.ControlModifier and key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             if self.completer:
                 self.completer.hide()
             self.execute_signal.emit()
             return
 
-        if key == Qt.Key_Backspace:
+        if key == Qt.Key.Key_Backspace:
             if self.completer:
                 self.completer.hide()
             cursor = self.textCursor()
             if cursor.positionInBlock() >= INDENT_LEN:
-                cursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, INDENT_LEN)
+                cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.KeepAnchor, INDENT_LEN)
                 selected = cursor.selectedText()
                 if selected == ' ' * INDENT_LEN:
                     cursor.removeSelectedText()
@@ -178,35 +180,35 @@ class InputWidget(QTextEdit):
             super().keyPressEvent(event)
             return
 
-        if modifiers == Qt.ControlModifier and key == Qt.Key_D:
+        if modifiers == Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_D:
             if self.completer:
                 self.completer.hide()
             self._duplicate_line_or_selection()
             return
 
-        if modifiers == Qt.AltModifier and key == Qt.Key_Q:
+        if modifiers == Qt.KeyboardModifier.AltModifier and key == Qt.Key.Key_Q:
             if self.completer:
                 self.completer.hide()
             self._toggle_comment()
             return
 
-        if key == Qt.Key_Escape:
+        if key == Qt.Key.Key_Escape:
             if self.completer and self.completer.isVisible():
                 self.completer.hide()
                 event.accept()
                 return
 
-        if modifiers == Qt.ControlModifier and key == Qt.Key_V:
+        if modifiers == Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_V:
             self._paste_plain_text()
             event.accept()
             return
 
-        if modifiers == Qt.ShiftModifier and key == Qt.Key_Insert:
+        if modifiers == Qt.KeyboardModifier.ShiftModifier and key == Qt.Key.Key_Insert:
             self._paste_plain_text()
             event.accept()
             return
 
-        if key in (Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown):
+        if key in (Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_PageUp, Qt.Key.Key_PageDown):
             if self.completer and self.completer.isVisible():
                 self.completer.navigate(key)
                 event.accept()
@@ -214,7 +216,7 @@ class InputWidget(QTextEdit):
 
         super().keyPressEvent(event)
 
-        if event.text() and modifiers in (Qt.NoModifier, Qt.ShiftModifier):
+        if event.text() and modifiers in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.ShiftModifier):
             self._trigger_completion()
 
     def _duplicate_line_or_selection(self):
@@ -224,12 +226,12 @@ class InputWidget(QTextEdit):
             end = cursor.selectionEnd()
             cursor.setPosition(end)
             cursor.insertText(text)
-            cursor.setPosition(end, QTextCursor.MoveAnchor)
-            cursor.setPosition(end + len(text), QTextCursor.KeepAnchor)
+            cursor.setPosition(end, QTextCursor.MoveMode.MoveAnchor)
+            cursor.setPosition(end + len(text), QTextCursor.MoveMode.KeepAnchor)
             self.setTextCursor(cursor)
         else:
-            cursor.movePosition(QTextCursor.StartOfLine)
-            cursor.movePosition(QTextCursor.EndOfLine, QTextCursor.KeepAnchor)
+            cursor.movePosition(QTextCursor.MoveOperation.StartOfLine)
+            cursor.movePosition(QTextCursor.MoveOperation.EndOfLine, QTextCursor.MoveMode.KeepAnchor)
             line = cursor.selectedText()
             cursor.clearSelection()
             cursor.insertText('\n' + line)
@@ -268,7 +270,7 @@ class InputWidget(QTextEdit):
         cursor = self.textCursor()
         pos = cursor.position()
 
-        if text and pos > 0 and pos <= len(text):
+        if text and 0 < pos <= len(text):
             char_before = text[pos - 1]
             if char_before.isalnum() or char_before == '_':
                 self._request_id += 1
@@ -317,7 +319,7 @@ class InputWidget(QTextEdit):
 
         # Select only the partial word and replace it
         cursor.setPosition(block.position() + start)
-        cursor.setPosition(pos, QTextCursor.KeepAnchor)
+        cursor.setPosition(pos, QTextCursor.MoveMode.KeepAnchor)
         cursor.removeSelectedText()
 
         # For functions/methods, add parentheses
@@ -329,13 +331,13 @@ class InputWidget(QTextEdit):
 
         # Position cursor inside parentheses for functions
         if hasattr(completion, 'type') and completion.type in ('function', 'method'):
-            cursor.movePosition(QTextCursor.Left)
+            cursor.movePosition(QTextCursor.MoveOperation.Left)
 
         self.setTextCursor(cursor)
         self.setFocus()
 
     def wheelEvent(self, event):
-        if event.modifiers() == Qt.ControlModifier:
+        if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
             if self.completer:
                 self.completer.hide()
             if event.angleDelta().y() > 0:
@@ -347,8 +349,6 @@ class InputWidget(QTextEdit):
             super().wheelEvent(event)
 
     def _paste_plain_text(self):
-        """Paste plain text only, stripping all formatting."""
-        from PySide6.QtWidgets import QApplication
         text = QApplication.clipboard().text()
         self.insertPlainText(text)
 
@@ -356,9 +356,6 @@ class InputWidget(QTextEdit):
         self._paste_plain_text()
 
     def _show_context_menu(self, pos):
-        from PySide6.QtWidgets import QMenu
-        from PySide6.QtGui import QAction
-
         menu = QMenu(self)
         copy_action = QAction("Copy", self)
         copy_action.setShortcut("Ctrl+C")
@@ -382,9 +379,9 @@ class InputWidget(QTextEdit):
         return cursor.selectedText().replace('\u2029', '\n')
 
     def append_text(self, text: str):
-        self.moveCursor(QTextCursor.End)
+        self.moveCursor(QTextCursor.MoveOperation.End)
         self.insertPlainText(text)
-        self.moveCursor(QTextCursor.End)
+        self.moveCursor(QTextCursor.MoveOperation.End)
 
     def focusOutEvent(self, event):
         if self.completer:

@@ -1,13 +1,9 @@
-"""Completion engine using Jedi for Python code completion."""
-
-from typing import List, Optional, Any
 from dataclasses import dataclass
 import jedi
 
 
 @dataclass
 class CompletionItem:
-    """Represents a single completion option."""
     name: str
     complete: str
     type: str = ""  # 'function', 'class', 'module', 'keyword', etc.
@@ -16,13 +12,11 @@ class CompletionItem:
 
 
 class CompletionEngine:
-    """Thread-safe completion engine using Jedi."""
-
     def __init__(self):
         self._script = None
         self._completions = []
 
-    def get_completions(self, text: str, line: int, column: int) -> List[CompletionItem]:
+    def get_completions(self, text: str, line: int, column: int) -> list[CompletionItem]:
         """
         Get completions for the given text at the specified position.
         
@@ -46,7 +40,6 @@ class CompletionEngine:
                     type=comp.type,
                 )
                 
-                # Get signature for functions
                 if comp.type == 'function':
                     try:
                         sigs = comp.get_signatures()
@@ -55,7 +48,6 @@ class CompletionEngine:
                     except Exception:
                         pass
                 
-                # Get docstring
                 try:
                     doc = comp.docstring()
                     if doc:
@@ -67,7 +59,6 @@ class CompletionEngine:
             
             return result
         except Exception:
-            # Return empty list on error (don't crash)
             return []
 
     def should_trigger_completion(self, text: str, cursor_pos: int) -> bool:
@@ -77,7 +68,6 @@ class CompletionEngine:
         """
         if cursor_pos <= 0 or cursor_pos > len(text):
             return False
-        
         char_before = text[cursor_pos - 1]
         return char_before.isalnum() or char_before == '_'
 

@@ -1,10 +1,8 @@
-"""Code execution engine with stdout/stderr capture."""
-
-import sys
 import io
+import sys
 import traceback
-from contextlib import redirect_stdout
-from typing import Any, Dict, Optional
+from typing import Any, Dict
+
 from PySide6.QtCore import QObject, Signal
 
 
@@ -30,20 +28,15 @@ class CodeExecutor(QObject):
         self._namespace: Dict[str, Any] = {"__name__": "__main__"}
 
     def get_namespace(self) -> Dict[str, Any]:
-        """Get the execution namespace."""
         return self._namespace
 
     def update_namespace(self, updates: Dict[str, Any]) -> None:
-        """Update the execution namespace with new variables."""
         self._namespace.update(updates)
 
     def clear_namespace(self) -> None:
-        """Clear the execution namespace (except __name__)."""
         self._namespace = {"__name__": "__main__"}
 
     def execute(self, code: str) -> ExecutionResult:
-        """Execute code string and return ExecutionResult."""
-        # Replace Qt paragraph separators with newlines
         code = code.replace('\u2029', '\n')
         
         result = ExecutionResult()
@@ -57,8 +50,6 @@ class CodeExecutor(QObject):
 
         try:
             code_stripped = code.strip()
-            
-            # Try eval first for single expressions
             try:
                 result_value = eval(code_stripped, self._namespace, self._namespace)
                 if result_value is not None:
@@ -66,13 +57,11 @@ class CodeExecutor(QObject):
                     result.has_result = True
                     result.result = result_value
             except SyntaxError:
-                # Fall back to exec for statements
                 exec(code, self._namespace, self._namespace)
         except Exception as e:
             result.exception = e
             tb_lines = traceback.format_exc().split('\n')
-            # Remove internal frames
-            filtered = [line for line in tb_lines 
+            filtered = [line for line in tb_lines
                        if not ('script_editor' in line and '<string>' in line)]
             stderr_buffer.write('\n'.join(filtered))
         finally:
@@ -82,7 +71,6 @@ class CodeExecutor(QObject):
         result.stdout = stdout_buffer.getvalue()
         result.stderr = stderr_buffer.getvalue()
         
-        # Emit collected output
         if result.stdout.strip():
             self.stdout_signal.emit(result.stdout.rstrip('\n'))
         if result.stderr.strip():
@@ -92,5 +80,4 @@ class CodeExecutor(QObject):
         return result
 
     def execute_selected(self, code: str) -> ExecutionResult:
-        """Execute selected code (alias for execute)."""
         return self.execute(code)

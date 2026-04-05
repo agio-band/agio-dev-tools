@@ -1,33 +1,20 @@
-"""Completion widget for displaying autocomplete suggestions.
-
-Uses a plain widget (not a separate window) to avoid focus issues.
-"""
-
 from PySide6.QtWidgets import QListWidget, QListWidgetItem, QAbstractItemView, QFrame
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QFont, QFontMetrics
 
 
 class CompletionWidget(QListWidget):
-    """Autocomplete popup widget for code completion suggestions."""
-
     def __init__(self, parent=None, editor=None):
         super().__init__(parent)
         self.editor = editor
         self.line_height = 20
-
-        # Start hidden
         self.hide()
-
-        # No window flags - this is a regular child widget
-        # This prevents focus stealing issues
-        self.setFrameStyle(QFrame.NoFrame)
-
+        self.setFrameStyle(QFrame.Shape.NoFrame)
         self.setAlternatingRowColors(True)
-        self.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setFont(QFont("Courier New", 10))
 
         self.setStyleSheet("""
@@ -58,14 +45,14 @@ class CompletionWidget(QListWidget):
         self._completions = []
 
     def _on_item_double_clicked(self, item):
-        self._apply_completion(item)
+        self.apply_completion(item)
 
     def _on_item_activated(self, item):
-        self._apply_completion(item)
+        self.apply_completion(item)
 
-    def _apply_completion(self, item):
+    def apply_completion(self, item):
         if item and self.editor:
-            comp = item.data(Qt.UserRole)
+            comp = item.data(Qt.ItemDataRole.UserRole)
             if comp:
                 self.editor.apply_completion(comp)
         self.hide()
@@ -78,7 +65,7 @@ class CompletionWidget(QListWidget):
             self._completions = completions
             for comp in completions:
                 item = QListWidgetItem(comp.name)
-                item.setData(Qt.UserRole, comp)
+                item.setData(Qt.ItemDataRole.UserRole, comp)
                 type_icon = {'function': 'ƒ', 'method': 'ƒ', 'class': 'C', 'module': 'M',
                              'keyword': 'K', 'instance': 'I', 'param': 'P', 'property': '@'}
                 icon = type_icon.get(comp.type, '•')
@@ -113,18 +100,17 @@ class CompletionWidget(QListWidget):
         count = self.count()
         if count == 0:
             return
-        if key == Qt.Key_Up:
+        if key == Qt.Key.Key_Up:
             self.setCurrentRow((current_row - 1) % count)
-        elif key == Qt.Key_Down:
+        elif key == Qt.Key.Key_Down:
             self.setCurrentRow((current_row + 1) % count)
-        elif key == Qt.Key_PageUp:
+        elif key == Qt.Key.Key_PageUp:
             self.setCurrentRow(max(0, current_row - 5))
-        elif key == Qt.Key_PageDown:
+        elif key == Qt.Key.Key_PageDown:
             self.setCurrentRow(min(count - 1, current_row + 5))
         self.scrollToItem(self.currentItem())
 
     def keyPressEvent(self, event):
-        """Handle key events without stealing focus from editor."""
         key = event.key()
 
         # If not visible, ignore completely
@@ -132,29 +118,25 @@ class CompletionWidget(QListWidget):
             event.ignore()
             return
 
-        if key == Qt.Key_Escape:
+        if key == Qt.Key.Key_Escape:
             self.hide()
-        elif key in (Qt.Key_Return, Qt.Key_Enter):
-            self._apply_completion(self.currentItem())
-        elif key == Qt.Key_Tab:
-            self._apply_completion(self.currentItem())
-        elif key in (Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown):
+        elif key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self.apply_completion(self.currentItem())
+        elif key == Qt.Key.Key_Tab:
+            self.apply_completion(self.currentItem())
+        elif key in (Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_PageUp, Qt.Key.Key_PageDown):
             self.navigate(key)
-        elif key == Qt.Key_Backspace:
+        elif key == Qt.Key.Key_Backspace:
             self.hide()
         else:
-            # For all other keys, hide and let editor handle them
             self.hide()
 
     def show_at(self, pos: QPoint):
         if self.width() == 0 or self.height() == 0:
             self._resize_to_content()
-
-        # Position relative to parent
         self.move(pos)
         self.show()
         self.raise_()
 
-        # Ensure editor keeps focus
         if self.editor:
             self.editor.setFocus()
