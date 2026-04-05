@@ -2,7 +2,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
     QTabWidget, QWidget, QHBoxLayout,
-    QPushButton, QInputDialog, QMessageBox, QApplication
+    QPushButton, QInputDialog, QApplication
 )
 from PySide6.QtWidgets import QMenu
 from PySide6.QtGui import QCursor, QAction
@@ -73,27 +73,23 @@ class TabWidget(QTabWidget):
 
     def add_new_tab(self, name="Untitled", text=""):
         container = TabContainer(self.parent_editor, text, self.desk)
-        container.edit.save_signal.connect(self._save_session)
         self.addTab(container, str(name))
         container.edit.moveCursor(QTextCursor.End)
         self.setCurrentIndex(self.count() - 1)
+        # Save session when a new tab is added
+        if hasattr(self.parent_editor, '_save_session'):
+            self.parent_editor._save_session()
         return container.edit
 
     def close_tab(self, index):
         if self.count() <= 1:
             return
         container: TabContainer = self.widget(index)
-        text = self.get_tab_text(index)
-        if text.strip():
-            reply = QMessageBox.question(
-                self, 'Close Tab',
-                f'Close this tab without saving?\n{self.tabText(index)}',
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            )
-            if reply == QMessageBox.StandardButton.No:
-                return
         container.cleanup()
         self.removeTab(index)
+        # Notify parent dialog to save session after tab removal
+        if hasattr(self.parent_editor, '_save_session'):
+            self.parent_editor._save_session()
 
     def rename_tab(self):
         index = self.currentIndex()
@@ -101,6 +97,8 @@ class TabWidget(QTabWidget):
         result = QInputDialog.getText(self, 'New Name', 'Enter New Name', text=current_name)
         if result[1]:
             self.setTabText(index, result[0])
+            if hasattr(self.parent_editor, '_save_session'):
+                self.parent_editor._save_session()
 
     def get_tab_text(self, index=None):
         if index is None:
@@ -132,12 +130,12 @@ class TabWidget(QTabWidget):
             if hasattr(widget, 'edit') and hasattr(widget.edit, 'completer'):
                 if widget.edit.completer:
                     widget.edit.completer.hide()
+        # Save session on tab switch
+        if hasattr(self.parent_editor, '_save_session'):
+            self.parent_editor._save_session()
 
     def current_editor(self):
         return self.widget(self.currentIndex()).edit
-
-    def _save_session(self):
-        pass
 
     def cleanup_all(self):
         for i in range(self.count()):

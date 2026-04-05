@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import Optional
+
 from PySide6.QtWidgets import (
     QMainWindow, QVBoxLayout, QWidget, QSplitter
 )
@@ -6,19 +9,26 @@ from PySide6.QtCore import Qt
 
 from .core.code_manager import CodeManager
 from .core.executor import CodeExecutor
+from .core.session_manager import SessionManager, _get_session_name, DEFAULT_SESSIONS_DIR
 from .widgets.output_widget import OutputWidget
 from .widgets.tab_widget import TabWidget
 
 
 class ScriptEditorDialog(QMainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, session_name: Optional[str] = None,
+                 sessions_dir: Optional[Path] = None):
         super().__init__(parent)
-        self.setWindowTitle("agio Python Script Editor")
+        self.session_manager = SessionManager(
+            session_name=session_name or _get_session_name(),
+            sessions_dir=sessions_dir or DEFAULT_SESSIONS_DIR,
+        )
+        self.setWindowTitle(f"agio Python Script Editor [{self.session_manager.session_name}]")
         self.resize(1000, 700)
         self.code_manager = CodeManager()
         self.executor = CodeExecutor()
         self._setup_ui()
         self._setup_shortcuts()
+        self._load_session()
         self.executor.stdout_signal.connect(self.output_widget.append_output)
         self.executor.stderr_signal.connect(self.output_widget.append_error)
 
@@ -41,13 +51,21 @@ class ScriptEditorDialog(QMainWindow):
         main_layout.addWidget(splitter)
         central.setLayout(main_layout)
 
-        self.add_tab('Script 1')
+    def _load_session(self):
+        """Load tabs from the saved session, or create a default tab."""
+        session_data = self.session_manager.load_session()
+        if session_data:
+            for tab_info in session_data:
+                self.tab_widget.add_new_tab(tab_info["title"], tab_info["code"])
+        else:
+            self.add_tab("Script 1")
 
     def _setup_shortcuts(self):
         ctrl_n = QShortcut(QKeySequence("Ctrl+N"), self)
         ctrl_n.activated.connect(self.tab_widget.add_new_tab)
 
     def execute_selected(self):
+        self._save_session()
         editor = self.tab_widget.current_editor()
         selected_text = editor.get_selected_text()
 
@@ -69,8 +87,18 @@ class ScriptEditorDialog(QMainWindow):
             code = self.get_current_code()
 
         if code and code.strip():
+            self._save_session()
             self.output_widget.append_prompt(code)
             self.executor.execute(code)
+
+    def _save_session(self):
+        """Save all tabs to the session."""
+        tabs = []
+        for i in range(self.tab_widget.count()):
+            title = self.tab_widget.tabText(i)
+            code = self.get_tab_code(i)
+            tabs.append((title, code))
+        self.session_manager.save_session(tabs)
 
     # ========== Public API Methods ==========
 
@@ -141,5 +169,6 @@ class ScriptEditorDialog(QMainWindow):
             self.tab_widget.current_editor().setFocus()
 
     def closeEvent(self, event):
+        self._save_session()
         self.tab_widget.cleanup_all()
         super().closeEvent(event)
