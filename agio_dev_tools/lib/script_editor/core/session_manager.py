@@ -53,6 +53,7 @@ class SessionManager:
         tabs = []
         for entry in manifest:
             title = entry.get("title", "Untitled")
+            font_size = entry.get("font_size", 12)
             filename = entry.get("file")
             code = ""
             if filename:
@@ -62,11 +63,11 @@ class SessionManager:
                         code = tab_file.read_text(encoding="utf-8")
                     except OSError:
                         pass
-            tabs.append({"title": title, "code": code})
+            tabs.append({"title": title, "code": code, "font_size": font_size})
 
         return tabs if tabs else None
 
-    def save_session(self, tabs: list[tuple[str, str]]):
+    def save_session(self, tabs: list[tuple[str, str, int]]):
         self._ensure_dir()
 
         # Clean up old tab files
@@ -85,14 +86,14 @@ class SessionManager:
 
         # Write new tab files and build manifest
         manifest = []
-        for i, (title, code) in enumerate(tabs):
+        for i, (title, code, font_size) in enumerate(tabs):
             filename = f"{TAB_FILE_PREFIX}{i}{TAB_FILE_EXT}"
             tab_file = self.session_dir / filename
             try:
                 tab_file.write_text(code, encoding="utf-8")
             except OSError:
                 pass
-            manifest.append({"title": title, "file": filename})
+            manifest.append({"title": title, "file": filename, "font_size": font_size})
 
         try:
             with open(self.manifest_path, "w") as f:
@@ -100,7 +101,7 @@ class SessionManager:
         except OSError:
             pass
 
-    def save_tab(self, index: int, title: str, code: str):
+    def save_tab(self, index: int, title: str, code: str, font_size: int = 12):
         self._ensure_dir()
         filename = f"{TAB_FILE_PREFIX}{index}{TAB_FILE_EXT}"
         tab_file = self.session_dir / filename
@@ -116,7 +117,7 @@ class SessionManager:
             except (json.JSONDecodeError, OSError):
                 manifest = []
 
-        entry = {"title": title, "file": filename}
+        entry = {"title": title, "file": filename, "font_size": font_size}
         if index < len(manifest):
             manifest[index] = entry
         else:

@@ -54,6 +54,15 @@ class InputWidget(QTextEdit):
     def get_font_size(self) -> int:
         return self.document().defaultFont().pointSize()
 
+    def change_font_size_to(self, size: int):
+        """Set font to an absolute size."""
+        font = self.document().defaultFont()
+        font.setPointSize(size)
+        self.document().setDefaultFont(font)
+        font_metrics = QFontMetrics(font)
+        self.setTabStopDistance(INDENT_LEN * font_metrics.horizontalAdvance(' '))
+        self.font_changed.emit()
+
     def change_font_size(self, increase: bool):
         current_size = self.get_font_size()
         new_size = min(MAX_FONT_SIZE, current_size + 1) if increase else max(MIN_FONT_SIZE, current_size - 1)

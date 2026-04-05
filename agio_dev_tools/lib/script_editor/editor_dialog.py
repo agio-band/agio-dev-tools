@@ -16,7 +16,8 @@ from .widgets.tab_widget import TabWidget
 
 class ScriptEditorDialog(QMainWindow):
     def __init__(self, parent=None, session_name: Optional[str] = None,
-                 sessions_dir: Optional[Path] = None):
+                 sessions_dir: Optional[Path] = None,
+                 custom_namespace: Optional[dict] = None):
         super().__init__(parent)
         self.session_manager = SessionManager(
             session_name=session_name or _get_session_name(),
@@ -25,7 +26,8 @@ class ScriptEditorDialog(QMainWindow):
         self.setWindowTitle(f"agio Python Script Editor [{self.session_manager.session_name}]")
         self.resize(1000, 700)
         self.code_manager = CodeManager()
-        self.executor = CodeExecutor()
+        self.executor = CodeExecutor(custom_namespace=custom_namespace)
+        self.executor.set_executor_ref(self.executor)
         self._setup_ui()
         self._setup_shortcuts()
         self._load_session()
@@ -56,7 +58,9 @@ class ScriptEditorDialog(QMainWindow):
         session_data = self.session_manager.load_session()
         if session_data:
             for tab_info in session_data:
-                self.tab_widget.add_new_tab(tab_info["title"], tab_info["code"])
+                editor = self.tab_widget.add_new_tab(tab_info["title"], tab_info["code"])
+                font_size = tab_info.get("font_size", 12)
+                editor.change_font_size_to(font_size)
         else:
             self.add_tab("Script 1")
 
@@ -97,7 +101,9 @@ class ScriptEditorDialog(QMainWindow):
         for i in range(self.tab_widget.count()):
             title = self.tab_widget.tabText(i)
             code = self.get_tab_code(i)
-            tabs.append((title, code))
+            editor = self.tab_widget.widget(i).edit
+            font_size = editor.get_font_size()
+            tabs.append((title, code, font_size))
         self.session_manager.save_session(tabs)
 
     # ========== Public API Methods ==========

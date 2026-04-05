@@ -23,9 +23,14 @@ class CodeExecutor(QObject):
     stderr_signal = Signal(str)
     execution_finished_signal = Signal()
 
-    def __init__(self):
+    def __init__(self, custom_namespace: Dict[str, Any] | None = None):
         super().__init__()
         self._namespace: Dict[str, Any] = {"__name__": "__main__"}
+        if custom_namespace:
+            self._namespace.update(custom_namespace)
+
+    def set_executor_ref(self, executor) -> None:
+        self._namespace["__executor__"] = executor
 
     def get_namespace(self) -> Dict[str, Any]:
         return self._namespace
