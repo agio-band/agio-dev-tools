@@ -28,15 +28,19 @@ class CompletionWidget(QListWidget):
                 padding: 2px 8px;
                 min-height: 18px;
             }
+            QListWidget::item:alternate {
+                background-color: #3a3a3a;
+            }
             QListWidget::item:selected {
-                background-color: #5a5a5a;
+                background-color: #4a7ab5;
                 color: #ffffff;
             }
-            QListWidget::item:alternate {
-                background-color: #333333;
+            QListWidget::item:selected:alternate {
+                background-color: #4a7ab5;
+                color: #ffffff;
             }
             QListWidget::item:hover {
-                background-color: #4a4a4a;
+                background-color: #555555;
             }
         """)
 
