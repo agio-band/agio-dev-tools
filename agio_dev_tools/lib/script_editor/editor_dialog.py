@@ -4,7 +4,7 @@ from typing import Optional
 from PySide6.QtWidgets import (
     QMainWindow, QVBoxLayout, QWidget, QSplitter
 )
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QKeySequence, QShortcut, QGuiApplication
 from PySide6.QtCore import Qt
 
 from .core.code_manager import CodeManager
@@ -12,6 +12,7 @@ from .core.executor import CodeExecutor
 from .core.session_manager import SessionManager, _get_session_name, DEFAULT_SESSIONS_DIR
 from .widgets.output_widget import OutputWidget
 from .widgets.tab_widget import TabWidget
+from agio.tools import qt
 
 
 class ScriptEditorDialog(QMainWindow):
@@ -57,11 +58,24 @@ class ScriptEditorDialog(QMainWindow):
         """Load tabs from the saved session, or create a default tab."""
         session_data = self.session_manager.load_session()
         if session_data:
-            for tab_info in session_data:
-                editor = self.tab_widget.add_new_tab(tab_info["title"], tab_info["code"])
-                font_size = tab_info.get("font_size", 12)
-                editor.change_font_size_to(font_size)
+            # Restore window geometry if available
+            window_info = session_data.get("window", {})
+            if window_info:
+                self._restore_window_geometry(window_info)
+            else:
+                qt.center_on_screen(self)
+            
+            # Load tabs
+            tabs = session_data.get("tabs", [])
+            if tabs:
+                for tab_info in tabs:
+                    editor = self.tab_widget.add_new_tab(tab_info["title"], tab_info["code"])
+                    font_size = tab_info.get("font_size", 12)
+                    editor.change_font_size_to(font_size)
+            else:
+                self.add_tab("Script 1")
         else:
+            qt.center_on_screen(self)
             self.add_tab("Script 1")
 
     def _setup_shortcuts(self):
@@ -104,7 +118,10 @@ class ScriptEditorDialog(QMainWindow):
             editor = self.tab_widget.widget(i).edit
             font_size = editor.get_font_size()
             tabs.append((title, code, font_size))
-        self.session_manager.save_session(tabs)
+        
+        # Collect window geometry
+        window_info = self._get_window_geometry()
+        self.session_manager.save_session(tabs, window_info)
 
     # ========== Public API Methods ==========
 
@@ -178,3 +195,25 @@ class ScriptEditorDialog(QMainWindow):
         self._save_session()
         self.tab_widget.cleanup_all()
         super().closeEvent(event)
+
+    def _get_window_geometry(self) -> dict:
+        """Get current window position and size."""
+        geometry = self.geometry()
+        return {
+            "x": geometry.x(),
+            "y": geometry.y(),
+            "width": geometry.width(),
+            "height": geometry.height(),
+        }
+
+    def _restore_window_geometry(self, window_info: dict):
+        """Restore window position and size from saved data."""
+        x = window_info.get("x")
+        y = window_info.get("y")
+        width = window_info.get("width", 1000)
+        height = window_info.get("height", 700)
+        
+        if x is not None and y is not None:
+            self.setGeometry(x, y, width, height)
+        else:
+            self.resize(width, height)

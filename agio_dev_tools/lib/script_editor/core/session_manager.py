@@ -40,14 +40,25 @@ class SessionManager:
     def session_exists(self) -> bool:
         return self.manifest_path.exists()
 
-    def load_session(self) -> Optional[list[dict]]:
+    def load_session(self) -> Optional[dict]:
         if not self.session_exists():
             return None
 
         try:
             with open(self.manifest_path) as f:
-                manifest = json.load(f)
+                data = json.load(f)
         except (json.JSONDecodeError, OSError):
+            return None
+
+        # Support both old format (list) and new format (dict with window info)
+        if isinstance(data, list):
+            # Old format - migrate to new format
+            manifest = data
+            window_info = {}
+        elif isinstance(data, dict):
+            manifest = data.get("tabs", [])
+            window_info = data.get("window", {})
+        else:
             return None
 
         tabs = []
@@ -65,16 +76,20 @@ class SessionManager:
                         pass
             tabs.append({"title": title, "code": code, "font_size": font_size})
 
-        return tabs if tabs else None
+        if not tabs:
+            return None
 
-    def save_session(self, tabs: list[tuple[str, str, int]]):
+        return {"tabs": tabs, "window": window_info}
+
+    def save_session(self, tabs: list[tuple[str, str, int]], window_info: Optional[dict] = None):
         self._ensure_dir()
 
         # Clean up old tab files
         if self.manifest_path.exists():
             try:
                 with open(self.manifest_path) as f:
-                    old_manifest = json.load(f)
+                    old_data = json.load(f)
+                old_manifest = old_data if isinstance(old_data, list) else old_data.get("tabs", [])
                 for entry in old_manifest:
                     filename = entry.get("file")
                     if filename:
@@ -95,9 +110,14 @@ class SessionManager:
                 pass
             manifest.append({"title": title, "file": filename, "font_size": font_size})
 
+        # Save in new format with window info
+        session_data = {"tabs": manifest}
+        if window_info:
+            session_data["window"] = window_info
+
         try:
             with open(self.manifest_path, "w") as f:
-                json.dump(manifest, f, indent=2)
+                json.dump(session_data, f, indent=2)
         except OSError:
             pass
 

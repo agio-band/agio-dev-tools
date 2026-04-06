@@ -1,4 +1,6 @@
+import traceback
 from dataclasses import dataclass
+from pathlib import Path
 import jedi
 
 
@@ -29,7 +31,9 @@ class CompletionEngine:
             List of CompletionItem objects
         """
         try:
-            script = jedi.Script(text, path=None)
+            # Use a temporary path to help Jedi resolve imports properly
+            temp_path = Path("<input>")
+            script = jedi.Script(text, path=temp_path)
             completions = script.complete(line, column)
 
             result = []
@@ -58,8 +62,14 @@ class CompletionEngine:
                 result.append(item)
 
             return result
+        except TypeError as e:
+            # Jedi may raise TypeError when it encounters None values internally
+            # (e.g., "TypeError: expected str, bytes or os.PathLike object, not NoneType")
+            # This is a known Jedi issue, safely ignore it
+            return []
         except Exception as e:
-            print(e)
+            # For other errors, log and return empty list
+            traceback.print_exc()
             return []
 
     def should_trigger_completion(self, text: str, cursor_pos: int) -> bool:
