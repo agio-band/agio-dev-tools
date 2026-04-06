@@ -335,15 +335,14 @@ class InputWidget(QTextEdit):
         cursor.setPosition(pos, QTextCursor.MoveMode.KeepAnchor)
         cursor.removeSelectedText()
 
-        # For functions/methods, add parentheses
         insert_text = completion.name
-        if hasattr(completion, 'type') and completion.type in ('function', 'method'):
+        is_import_line = line_text.lstrip().startswith(('import ', 'from '))
+        if hasattr(completion, 'type') and completion.type in ('function', 'method') and not is_import_line:
             insert_text = completion.name + '()'
 
         cursor.insertText(insert_text)
 
-        # Position cursor inside parentheses for functions
-        if hasattr(completion, 'type') and completion.type in ('function', 'method'):
+        if hasattr(completion, 'type') and completion.type in ('function', 'method') and not is_import_line:
             cursor.movePosition(QTextCursor.MoveOperation.Left)
 
         self.setTextCursor(cursor)
