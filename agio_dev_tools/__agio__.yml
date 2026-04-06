@@ -15,10 +15,10 @@ urls:
 
 required_packages: []
 
-#plugins:
-#  - label: Plugin Name
-#    implementations:
-#      - module: plugins/commands/my_plugin.py
+plugins:
+  - label: Script Editor Action
+    implementations:
+      - module: plugins/services/script_editor_service.py
 
 #settings:
 #  local:
