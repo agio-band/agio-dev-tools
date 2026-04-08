@@ -2,6 +2,7 @@ import traceback
 from dataclasses import dataclass
 from pathlib import Path
 import jedi
+import _pickle
 
 
 @dataclass
@@ -66,6 +67,10 @@ class CompletionEngine:
             # Jedi may raise TypeError when it encounters None values internally
             # (e.g., "TypeError: expected str, bytes or os.PathLike object, not NoneType")
             # This is a known Jedi issue, safely ignore it
+            return []
+        except _pickle.UnpicklingError:
+            # Jedi subprocess pickle corruption can happen occasionally.
+            # This is a known Jedi issue — silently recover with empty results.
             return []
         except Exception as e:
             # For other errors, log and return empty list

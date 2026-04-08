@@ -10,7 +10,8 @@ from PySide6.QtCore import Qt
 from .core.code_manager import CodeManager
 from .core.executor import CodeExecutor
 from .core.session_manager import SessionManager, _get_session_name, DEFAULT_SESSIONS_DIR
-from .widgets.output_widget import OutputWidget
+# from .widgets.output_widget import OutputWidget
+from agio.tools.qt.output_widget import OutputWidget
 from .widgets.tab_widget import TabWidget
 from agio.tools import qt
 
@@ -32,8 +33,8 @@ class ScriptEditorDialog(QMainWindow):
         self._setup_ui()
         self._setup_shortcuts()
         self._load_session()
-        self.executor.stdout_signal.connect(self.output_widget.append_output)
-        self.executor.stderr_signal.connect(self.output_widget.append_error)
+        self.executor.stdout_signal.connect(self.output_widget.append)
+        self.executor.stderr_signal.connect(self.output_widget.error)
 
     def _setup_ui(self):
         central = QWidget()
@@ -88,7 +89,7 @@ class ScriptEditorDialog(QMainWindow):
         selected_text = editor.get_selected_text()
 
         if selected_text.strip():
-            self.output_widget.append_prompt(selected_text)
+            self.output_widget.append(selected_text)
             self.executor.execute(selected_text)
         else:
             cursor = editor.textCursor()
@@ -97,7 +98,7 @@ class ScriptEditorDialog(QMainWindow):
             line_text = cursor.selectedText().replace('\u2029', '\n')
 
             if line_text.strip():
-                self.output_widget.append_prompt(line_text)
+                self.output_widget.append(line_text)
                 self.executor.execute(line_text)
 
     def execute_code(self, code: str = None):
@@ -106,7 +107,7 @@ class ScriptEditorDialog(QMainWindow):
 
         if code and code.strip():
             self._save_session()
-            self.output_widget.append_prompt(code)
+            self.output_widget.append(code)
             self.executor.execute(code)
 
     def _save_session(self):
@@ -173,7 +174,7 @@ class ScriptEditorDialog(QMainWindow):
         return self.output_widget.toPlainText()
 
     def clear_output(self):
-        self.output_widget.clear_output()
+        self.output_widget.clear()
 
     def clear_namespace(self):
         self.executor.clear_namespace()
