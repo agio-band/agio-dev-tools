@@ -1,15 +1,12 @@
 import logging
 
-from PySide6.QtGui import Qt
-
 from agio.core.plugins.base_service import ServicePlugin
 from agio.core.actions import make_action
-from agio_dev_tools.lib.script_editor import ScriptEditorDialog
 
 logger = logging.getLogger(__name__)
 
 
-class DecService(ServicePlugin):
+class DevToolsService(ServicePlugin):
     name = 'dev_tools'
 
     def __init__(self, *args, **kwargs):
@@ -17,10 +14,13 @@ class DecService(ServicePlugin):
         self.dialog = None
 
     @make_action(label='Script Editor',
-                 menu_name='tray_menu',
-                 app_name='desk')
+                 menu_name='tools_menu',
+                 app_name={'desk', 'web'}
+                 )
     def open_script_editor(self, *args, **kwargs):
         if not self.dialog:
+            from PySide6.QtGui import Qt
+            from agio_dev_tools.lib.script_editor import ScriptEditorDialog
             self.dialog = ScriptEditorDialog(
                 parent=None,
                 custom_namespace={},

@@ -20,6 +20,10 @@ plugins:
     implementations:
       - module: plugins/services/script_editor_service.py
 
+  - label: Workspace Service
+    implementations:
+      - module: plugins/services/workspace_web_actions_service.py
+
 #settings:
 #  local:
 #    layout: package_settings/local_layout.yml
@@ -29,4 +33,5 @@ plugins:
 #    model: package_settings.workspace_settings.PluginWorkspaceSettings
 
 callbacks:
-  - callbacks/print_publish_context.py
+  - modules:
+    - callbacks/print_publish_context.py
