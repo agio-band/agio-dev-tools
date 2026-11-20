@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt, QRect, QPointF, QRectF
 from PySide6.QtGui import (
     QPainter, QFont, QFontMetrics, QPalette, QPen, QBrush, QColor,
-    QMouseEvent, QPolygonF
+    QMouseEvent, QPolygonF, QTextCursor
 )
 
 MARKER_ZONE = 16      # width of the fold marker column

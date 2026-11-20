@@ -58,7 +58,8 @@ class TabWidget(QTabWidget):
         new_tab_button.setMaximumWidth(30)
         new_tab_button.setCursor(Qt.CursorShape.ArrowCursor)
         new_tab_button.setToolTip("Add Tab")
-        new_tab_button.clicked.connect(self.add_new_tab)
+        # discard the clicked(checked) bool — otherwise it lands in name=
+        new_tab_button.clicked.connect(lambda: self.add_new_tab())
         self.setCornerWidget(new_tab_button, Qt.Corner.TopLeftCorner)
         
         self.desk = QApplication.desktop() if hasattr(QApplication, 'desktop') else None
