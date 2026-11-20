@@ -1,8 +1,21 @@
-import traceback
+"""Jedi-based completion engine.
+
+Runs in the CompletionWorker thread only. Optimized for the interactive
+editor: no docstrings (they are the slowest part of jedi completions),
+signatures for callables only, results capped.
+"""
+
+import logging
+
 from dataclasses import dataclass
-from pathlib import Path
+
 import jedi
-import _pickle
+
+logger = logging.getLogger(__name__)
+
+MAX_COMPLETIONS = 100
+# completion types for which we fetch a signature for the tooltip
+SIGNATURE_TYPES = {'function', 'method', 'class'}
 
 
 @dataclass
@@ -15,84 +28,41 @@ class CompletionItem:
 
 
 class CompletionEngine:
-    def __init__(self):
-        self._script = None
-        self._completions = []
-
-    def get_completions(self, text: str, line: int, column: int) -> list[CompletionItem]:
+    def get_completions(self, text: str, line: int, column: int) -> list:
         """
-        Get completions for the given text at the specified position.
+        Get completions for the given source text at the given position.
 
         Args:
             text: The full source text
-            line: Line number (1-based from InputWidget)
-            column: Column number (0-based)
+            line: Line number (1-based)
+            column: Column number (0-based, position after the typed prefix)
 
         Returns:
-            List of CompletionItem objects
+            List of CompletionItem objects (empty list on any failure —
+            completion is a nice-to-have, errors must not surface in the UI)
         """
         try:
-            # Use a temporary path to help Jedi resolve imports properly
-            temp_path = Path("<input>")
-            script = jedi.Script(text, path=temp_path)
+            script = jedi.Script(code=text)
             completions = script.complete(line, column)
 
             result = []
-            for comp in completions:
+            for comp in completions[:MAX_COMPLETIONS]:
                 item = CompletionItem(
                     name=comp.name,
                     complete=comp.complete,
-                    type=comp.type,
+                    type=comp.type or "",
                 )
-
-                if comp.type == 'function':
+                if comp.type in SIGNATURE_TYPES:
                     try:
                         sigs = comp.get_signatures()
                         if sigs:
                             item.signature = sigs[0].to_string()
                     except Exception:
                         pass
-
-                try:
-                    doc = comp.docstring()
-                    if doc:
-                        item.docstring = doc
-                except Exception:
-                    pass
-
                 result.append(item)
-
             return result
-        except TypeError as e:
-            # Jedi may raise TypeError when it encounters None values internally
-            # (e.g., "TypeError: expected str, bytes or os.PathLike object, not NoneType")
-            # This is a known Jedi issue, safely ignore it
-            return []
-        except _pickle.UnpicklingError:
-            # Jedi subprocess pickle corruption can happen occasionally.
-            # This is a known Jedi issue — silently recover with empty results.
-            return []
         except Exception as e:
-            # For other errors, log and return empty list
-            traceback.print_exc()
+            # jedi can raise on odd input (e.g. during incremental typing);
+            # log quietly and return nothing instead of spamming the console
+            logger.debug("jedi completion failed at line=%s column=%s: %s", line, column, e)
             return []
-
-    def should_trigger_completion(self, text: str, cursor_pos: int) -> bool:
-        """
-        Check if we should trigger autocompletion at this position.
-        Triggers on alphanumeric characters and dots.
-        """
-        if cursor_pos <= 0 or cursor_pos > len(text):
-            return False
-        char_before = text[cursor_pos - 1]
-        return char_before.isalnum() or char_before == '_'
-
-    def get_context_completions(self, line_text: str, namespace: dict = None) -> tuple:
-        """
-        Get context-aware completions (e.g., for special environments).
-        
-        Returns:
-            Tuple of (completions_list, extra_items_list)
-        """
-        # This can be extended for environment-specific completions
-        return ([], [])

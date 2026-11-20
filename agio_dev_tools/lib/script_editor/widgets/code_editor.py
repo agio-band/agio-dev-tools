@@ -10,7 +10,7 @@ execution, comment toggle, font zoom, completer hooks, ...) is preserved.
 
 import re
 
-from PySide6.QtCore import Qt, Signal, QPoint
+from PySide6.QtCore import Qt, Signal, QPoint, QTimer
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtGui import (
     QFont, QFontMetrics, QKeyEvent, QTextCursor
@@ -26,6 +26,7 @@ INDENT_LEN = 4
 MIN_FONT_SIZE = 8
 MAX_FONT_SIZE = 30
 DEFAULT_FONT_NAME = "Courier New"
+COMPLETION_DEBOUNCE_MS = 150  # pause before sending a jedi request
 
 
 class CodeEditor(QPlainTextEdit):
@@ -51,12 +52,23 @@ class CodeEditor(QPlainTextEdit):
         self.completion_thread = None
         self._request_id = 0
 
+        # debounce timer: jedi requests are sent only after a short typing pause
+        self._completion_timer = QTimer(self)
+        self._completion_timer.setSingleShot(True)
+        self._completion_timer.setInterval(COMPLETION_DEBOUNCE_MS)
+        self._completion_timer.timeout.connect(self._send_completion_request)
+
         self.setAcceptDrops(True)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
 
         self.document().contentsChange.connect(self._on_contents_change)
         self.cursorPositionChanged.connect(self._on_cursor_moved)
+        self.verticalScrollBar().valueChanged.connect(self._on_scrolled)
+
+    def _on_scrolled(self):
+        if self.completer and self.completer.isVisible():
+            self.completer.hide()
 
     # ---------- folding ----------
 
@@ -439,29 +451,49 @@ class CodeEditor(QPlainTextEdit):
     # ---------- completion hooks (active once completer is wired by TabContainer) ----------
 
     def _trigger_completion(self):
+        """Called after a printable keypress — decides whether a jedi request
+        makes sense at the cursor position and (re)starts the debounce timer."""
         if not self.completion_thread or not self.completer:
+            return
+
+        cursor = self.textCursor()
+        pos = cursor.position()
+        text = self.toPlainText()
+
+        if text and 0 < pos <= len(text):
+            char_before = text[pos - 1]
+            if char_before.isalnum() or char_before in '_.':
+                self._completion_timer.start()  # restart debounce on each keystroke
+                return
+        if self.completer:
+            self.completer.hide()
+
+    def _send_completion_request(self):
+        """Debounce timeout fired — actually send the request to the worker thread."""
+        if not self.completion_thread or not self.completer:
+            return
+        if self.isReadOnly() or not self.hasFocus():
             return
 
         text = self.toPlainText()
         cursor = self.textCursor()
         pos = cursor.position()
+        if not text or not (0 < pos <= len(text)):
+            self.completer.hide()
+            return
 
-        if text and 0 < pos <= len(text):
-            char_before = text[pos - 1]
-            if char_before.isalnum() or char_before == '_' or char_before == '.':
-                self._request_id += 1
-                line_num = cursor.blockNumber() + 1
-                col_num = cursor.columnNumber()
-                self.completion_thread.request_completions(
-                    text, line_num, col_num, self._request_id
-                )
-            else:
-                self.completer.hide()
+        self._request_id += 1
+        self.completion_thread.request_completions(
+            text, cursor.blockNumber() + 1, cursor.columnNumber(), self._request_id
+        )
 
     def on_completions_ready(self, completions, request_id):
         if not self.completer:
             return
         if request_id != self._request_id:
+            return  # stale result — newer request already pending/served
+        if not self.hasFocus():
+            self.completer.hide()
             return
         if completions:
             self.completer.update_completions(completions)
@@ -472,9 +504,7 @@ class CodeEditor(QPlainTextEdit):
     def _move_completer(self):
         if not self.completer:
             return
-        cursor_rect = self.cursorRect()
-        pos = QPoint(cursor_rect.left(), cursor_rect.bottom() + 2)
-        self.completer.show_at(pos)
+        self.completer.show_at(self.cursorRect())
 
     def apply_completion(self, completion):
         cursor = self.textCursor()

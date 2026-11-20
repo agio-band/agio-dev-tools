@@ -9,14 +9,14 @@ from PySide6.QtGui import QCursor, QAction
 from .completion_widget import CompletionWidget
 from .input_widget import InputWidget
 from .line_number_widget import LineNumberWidget
-from ..threads.completion_thread import CompletionThread
+from ..threads.completion_thread import CompletionWorker
 
 
 class TabContainer(QWidget):
     def __init__(self, parent_editor, text="", desk=None):
         super().__init__()
         self.parent_editor = parent_editor
-        self.completion_thread = CompletionThread()
+        self.completion_thread = CompletionWorker()
         self.completer = CompletionWidget(editor=None)
         hbox = QHBoxLayout(self)
         hbox.setSpacing(0)
@@ -25,8 +25,11 @@ class TabContainer(QWidget):
         self.edit.completer = self.completer
         self.edit.completion_thread = self.completion_thread
         self.completer.editor = self.edit
-        self.completer.setParent(self.edit)
-        self.completion_thread.completions_ready.connect(self.edit.on_completions_ready)
+        # parent the popup to the viewport: its coordinates then match
+        # cursorRect() directly (which is viewport-relative)
+        self.completer.setParent(self.edit.viewport())
+        self.completion_thread.results_ready.connect(self.edit.on_completions_ready)
+        self.completion_thread.start()
         if text:
             self.edit.append_text(text)
         self.line_num = LineNumberWidget(self.edit, self)
@@ -39,6 +42,7 @@ class TabContainer(QWidget):
     def cleanup(self):
         if self.completion_thread:
             self.completion_thread.stop()
+            self.completion_thread = None
 
 
 class TabWidget(QTabWidget):
