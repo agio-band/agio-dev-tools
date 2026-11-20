@@ -176,6 +176,20 @@ class ScriptEditorDialog(QMainWindow):
     def clear_output(self):
         self.output_widget.clear()
 
+    # ========== Folding API ==========
+
+    def fold_all(self, index: int = None):
+        """Fold all collapsible regions in the given (or current) tab."""
+        self.get_editor(index).fold_all()
+
+    def unfold_all(self, index: int = None):
+        """Unfold all regions in the given (or current) tab."""
+        self.get_editor(index).unfold_all()
+
+    def toggle_fold_current(self, index: int = None):
+        """Toggle fold for the region at the cursor of the given (or current) tab."""
+        self.get_editor(index).toggle_fold_current()
+
     def clear_namespace(self):
         self.executor.clear_namespace()
 
