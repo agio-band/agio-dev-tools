@@ -87,6 +87,15 @@ class CodeEditor(QPlainTextEdit):
     def unfold_current(self):
         self.fold_manager.unfold(self.textCursor().block())
 
+    def folded_line_numbers(self) -> list:
+        """0-based line numbers of folded region starts (for session save)."""
+        return self.fold_manager.folded_starts()
+
+    def restore_folds(self, starts):
+        """Re-fold regions by start line numbers (for session load)."""
+        if starts:
+            self.fold_manager.restore_folds(starts)
+
     def update_gutter(self):
         """Called by FoldManager after visibility changes."""
         self.line_num_widget_updated()

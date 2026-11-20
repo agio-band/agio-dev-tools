@@ -65,6 +65,7 @@ class SessionManager:
         for entry in manifest:
             title = entry.get("title", "Untitled")
             font_size = entry.get("font_size", 12)
+            folded = entry.get("folded", [])
             filename = entry.get("file")
             code = ""
             if filename:
@@ -74,14 +75,20 @@ class SessionManager:
                         code = tab_file.read_text(encoding="utf-8")
                     except OSError:
                         pass
-            tabs.append({"title": title, "code": code, "font_size": font_size})
+            tabs.append({"title": title, "code": code, "font_size": font_size, "folded": folded})
 
         if not tabs:
             return None
 
         return {"tabs": tabs, "window": window_info}
 
-    def save_session(self, tabs: list[tuple[str, str, int]], window_info: Optional[dict] = None):
+    def save_session(self, tabs: list, window_info: Optional[dict] = None):
+        """Save tabs to the session.
+
+        Each tab is a tuple (title, code, font_size) or
+        (title, code, font_size, folded_starts) where folded_starts is a
+        list of 0-based line numbers of folded regions.
+        """
         self._ensure_dir()
 
         # Clean up old tab files
@@ -101,14 +108,16 @@ class SessionManager:
 
         # Write new tab files and build manifest
         manifest = []
-        for i, (title, code, font_size) in enumerate(tabs):
+        for i, tab in enumerate(tabs):
+            title, code, font_size = tab[0], tab[1], tab[2]
+            folded = list(tab[3]) if len(tab) > 3 else []
             filename = f"{TAB_FILE_PREFIX}{i}{TAB_FILE_EXT}"
             tab_file = self.session_dir / filename
             try:
                 tab_file.write_text(code, encoding="utf-8")
             except OSError:
                 pass
-            manifest.append({"title": title, "file": filename, "font_size": font_size})
+            manifest.append({"title": title, "file": filename, "font_size": font_size, "folded": folded})
 
         # Save in new format with window info
         session_data = {"tabs": manifest}

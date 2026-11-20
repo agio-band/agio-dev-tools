@@ -73,6 +73,7 @@ class ScriptEditorDialog(QMainWindow):
                     editor = self.tab_widget.add_new_tab(tab_info["title"], tab_info["code"])
                     font_size = tab_info.get("font_size", 12)
                     editor.change_font_size_to(font_size)
+                    editor.restore_folds(tab_info.get("folded"))
             else:
                 self.add_tab("Script 1")
         else:
@@ -118,8 +119,9 @@ class ScriptEditorDialog(QMainWindow):
             code = self.get_tab_code(i)
             editor = self.tab_widget.widget(i).edit
             font_size = editor.get_font_size()
-            tabs.append((title, code, font_size))
-        
+            folded = editor.folded_line_numbers()
+            tabs.append((title, code, font_size, folded))
+
         # Collect window geometry
         window_info = self._get_window_geometry()
         self.session_manager.save_session(tabs, window_info)

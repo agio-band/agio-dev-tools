@@ -97,6 +97,17 @@ class FoldManager:
     def has_folds(self) -> bool:
         return bool(self._folded)
 
+    def folded_starts(self) -> list:
+        """Sorted block numbers of currently folded region starts (for session save)."""
+        return sorted(self._folded)
+
+    def restore_folds(self, starts) -> None:
+        """Re-fold regions whose start lines are given (for session load)."""
+        for num in starts or []:
+            block = self._editor.document().findBlockByNumber(int(num))
+            if block.isValid():
+                self.fold(block)
+
     def fold_range(self, block):
         """(start_number, end_number) of the region starting at block, or None."""
         self._ensure_ranges()
