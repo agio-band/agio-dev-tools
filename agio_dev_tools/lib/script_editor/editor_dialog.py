@@ -17,14 +17,19 @@ from agio.tools import qt
 
 
 class ScriptEditorDialog(QMainWindow):
-    def __init__(self, parent=None, session_name: Optional[str] = None,
+    def __init__(self, parent=None,
+                 session_name: Optional[str] = None,
                  sessions_dir: Optional[Path] = None,
-                 custom_namespace: Optional[dict] = None):
+                 custom_namespace: Optional[dict] = None,
+                 hide_on_close: bool = False,
+                 init_text: str = None
+                 ):
         super().__init__(parent)
         self.session_manager = SessionManager(
             session_name=session_name or _get_session_name(),
             sessions_dir=sessions_dir or DEFAULT_SESSIONS_DIR,
         )
+        self._hide_on_close = hide_on_close
         self.setWindowTitle(f"agio Python Script Editor [{self.session_manager.session_name}]")
         self.resize(1000, 700)
         self.code_manager = CodeManager()
@@ -35,6 +40,8 @@ class ScriptEditorDialog(QMainWindow):
         self._load_session()
         self.executor.stdout_signal.connect(self.output_widget.append)
         self.executor.stderr_signal.connect(self.output_widget.error)
+        if init_text:
+            self.output_widget.append(init_text)
 
     def _setup_ui(self):
         central = QWidget()
@@ -211,7 +218,10 @@ class ScriptEditorDialog(QMainWindow):
     def closeEvent(self, event):
         self._save_session()
         self.tab_widget.cleanup_all()
-        super().closeEvent(event)
+        if self._hide_on_close:
+            self.hide()
+        else:
+            super().closeEvent(event)
 
     def _get_window_geometry(self) -> dict:
         """Get current window position and size."""
